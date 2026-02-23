@@ -25,6 +25,7 @@
 ;*******DEFINED SYMBOLS******************************
 .equ ANIMATION_START_ADDR	=	0x2000 ;useful, but not required
 .equ stack_init				=   0x3FFF
+.equ LEVEL_START_ADDR		=   0x3000	
 .equ HIGHSCORE_ADDR			=	0x2000 ;
 .def COUNTER = r20 ; used to keep score
 .def STAGE_COMING = r21 ; used to define the calling stage for interrupts
@@ -45,6 +46,11 @@
 .db 0x7e, 0x7e, 0xbd, 0xbd, 0xff, 0xff, 0xdb, 0xdb, 0xff, 0xff, 0xe7, 0xe7, 0xff, 0xff, 0xe7, 0xc7, 0xc3, 0x83, 0x81, 0x01, 0x00, 0x00, 0x00, 0x81, 0xc3, 0xe7, 0xff, 0xfb, 0xfb, 0xfb, 0x7b, 0x7b, 0x3b, 0x3b, 0x9b, 0x9b, 0xcb, 0xcb, 0xe3, 0xe3, 0xf3, 0xf3, 0xf9, 0xf9, 0xf8, 0xf8, 0xf9, 0xf9, 0xf3, 0xf3, 0xe3, 0xe3, 0xcb, 0xcb, 0x9b, 0x9b, 0x3b, 0x3b, 0x9b, 0x9b, 0xcb, 0xcb, 0xe3, 0xe3, 0xf3, 0xf3, 0xf9, 0xf9, 0xf8, 0xf8, 0xf9, 0xf9, 0xf3, 0xf3, 0xe3, 0xe3, 0xcb, 0xcb, 0x9b, 0x9b, 0x3b, 0x3b, 0x7b, 0x7b, 0xfb, 0xfb, 0xfb, 0xfb, 0xef, 0xef, 0xee, 0xee, 0xed, 0xed, 0xeb, 0xeb, 0xe7, 0xe7, 0xef, 0xef, 0xcf, 0xcf, 0xaf, 0xaf, 0x6f, 0x6f, 0x6f, 0x6f, 0xaf, 0xaf, 0xcf, 0xcf, 0xe7, 0xe7, 0xeb, 0xeb, 0xed, 0xed, 0xee, 0xee, 0xef, 0xef, 0xef, 0xef, 0xff, 0xff
 ANIMATION_END_ADDR:
 .equ ANIMATION_SIZE = ANIMATION_START_ADDR - ANIMATION_END_ADDR
+
+.org LEVEL_START_ADDR
+.db 0b11001010, 0b11001100, 0b11001011, 0b11010010, 0b10001101, 0b10010011, 0b01001101, 0b01010100
+LEVEL_END_ADDR:
+.equ NUMBER_OF_LEVELS = LEVEL_END_ADDR - LEVEL_START_ADDR
 ;*******END OF MEMORY CONSTANTS**********************
 
 ;*******INTERRUPT VECTORS****************************
@@ -78,8 +84,8 @@ MAIN:
 ; sts or out will work above, but out will ONLY work for addresses 
 ;END OF COPY
 ; Sets the timer interrupt to medium priority
-	ldi r16, TC_OVFINTLVL_MED_gc 
-	sts TCC0_INTCTRLA, r16
+	;ldi r16, TC_OVFINTLVL_MED_gc 
+	;sts TCC0_INTCTRLA, r16
 	
 	; Set bit 3 of PORTF to trigger the interrupt
 	ldi r16, 0b00000100		
@@ -160,16 +166,93 @@ TIMER_LOOP3:
 	ldi r16, TC_CLKSEL_OFF_gc
 	sts TCC0_CTRLA, r16
 
-	inc r19
+	inc r19 ; increment animation counter
 
 	cpi STAGE_GOING, 2
 	breq GAMEPLAY
 
 	rjmp PLAY_LOOP
 
+PLAY2:
+	rjmp PLAY
 GAMEPLAY:
-	
+	;Set the Z pointer to the level address
 
+	ldi STAGE_COMING, 2
+	; Load level
+	lpm r15, Z+
+
+	;Set up target
+	ldi r16, 0b00000111
+	and r16, r15
+	ldi TARGET, 1
+	SHIFT_TARGET:
+		lsl TARGET
+		dec r16
+		brne SHIFT_TARGET
+
+	;Set up CURSOR
+
+	; default set up cursor to size 2
+	ldi CURSOR, 0b00000011
+
+	ldi r24, 0 ; If set its moving right
+
+GAME_LOOP:
+
+	sbrc CURSOR, 0
+	rjmp START_LEFT
+
+	sbrc CURSOR, 7
+	rjmp START_RIGHT
+	rjmp MOVE
+
+	START_LEFT:
+		ldi r24, 0
+	rjmp MOVE
+
+	START_RIGHT:
+		ldi r24, 1
+	
+	MOVE:
+		sbrs r24, 0
+		lsl CURSOR
+
+		sbrc r24, 0
+		lsr CURSOR
+
+	ldi r25, 0xff
+	sts PORTC_OUTSET, r25
+	sts PORTC_OUTCLR, CURSOR
+	sts PORTC_OUTCLR, TARGET
+
+	; Turn on clock
+	ldi r16, TC_CLKSEL_DIV1024_gc
+	sts TCC0_CTRLA, r16
+
+	; Set the frame rate to run at 200ms (40ms * 5 = 200ms = 5Hz)
+	ldi r17, 5
+
+TIMER_LOOP4:
+	lds r16, TCC0_INTFLAGS
+	sbrs r16, 0
+	rjmp TIMER_LOOP4
+	andi r16, 0b00001111
+	sts TCC0_INTFLAGS, r16
+	dec r17 ; decrement r17 to wait another TC clock cycle
+	brne TIMER_LOOP4
+	
+	; Turn off timer
+	ldi r16, TC_CLKSEL_OFF_gc
+	sts TCC0_CTRLA, r16
+
+	cpi STAGE_COMING, 5
+	breq GAMEPLAY
+
+	cpi STAGE_GOING, 1
+	breq PLAY2
+
+	rjmp GAME_LOOP
 ; end of program (never reached)
 DONE: 
 	rjmp DONE
@@ -248,6 +331,8 @@ S1_PRESSED_ISR:
 
 	GO_STAGE2:
 		ldi STAGE_GOING, 2
+		ldi ZL, 0x00
+		ldi ZH, 0x60
 
 	CHECK2:
 		cpi STAGE_COMING, 2
@@ -267,12 +352,13 @@ S1_PRESSED_ISR:
 
 	HIT:
 		mov CURSOR, r17
+		ldi STAGE_COMING, 5
 		inc COUNTER
 		ld r0, Z+
 		ld r17, X
 		cp r17, COUNTER
 		brlo UPDATE_HS
-		rjmp CONTINUE
+		
 
 	UPDATE_HS:
 		st X, COUNTER
