@@ -43,8 +43,8 @@ ANIMATION_END_ADDR:
 ;*******END OF MEMORY CONSTANTS**********************
 
 ;*******INTERRUPT VECTORS****************************
-;.org PORTF_INT0_vect ; Port F interrupt (S1)
-;	rjmp S1_PRESSED_ISR		
+.org PORTF_INT0_vect ; Port F interrupt (S1)
+	rjmp S1_PRESSED_ISR		
 ; .org TCC0_OVF_vect ; Timer overflow interrupt
 ;	rjmp DEBOUNCE_OVER_ISR	
 ;.org TCD0_OVF_vect ; Timer overflow interrupt
@@ -72,6 +72,25 @@ MAIN:
 	out CPU_SPH, r16		;initialize high byte of stack pointer 
 ; sts or out will work above, but out will ONLY work for addresses 
 ;END OF COPY
+; Sets the timer interrupt to medium priority
+	ldi r16, TC_OVFINTLVL_MED_gc 
+	sts TCC0_INTCTRLA, r16
+	
+	; Set bit 3 of PORTF to trigger the interrupt
+	ldi r16, 0b00000100		
+	sts PORTF_INT0MASK, r16
+
+	; Set the PORTF interrupt to low priority
+	ldi r16, 0b00000001
+	sts PORTF_INTCTRL, r16
+
+	; Set PMIC to low and medium priority (PMIC_LOLVLEN_bm and PMIC_MEDLVLEN_bm)
+	ldi r16, PMIC_LOLVLEN_bm		
+	sts PMIC_CTRL, r16
+
+	; Clear the PORTF_INTFLAGS (bit 0)
+	ldi	 r18, 0b00000001			; PORT_INT0IF_bm
+	sts  PORTF_INTFLAGS, r18
 
 ; initialize relevant I/O modules (switches and LEDs)
 	rcall IO_INIT
@@ -79,6 +98,7 @@ MAIN:
 ; initialize (but do not start) the relevant timer/counter module(s)
 	rcall TC_INIT
 
+	sei
 	
 
 ; "PLAY" mode
@@ -184,6 +204,7 @@ IO_INIT:
 ; Input(s): N/A
 ; Output: N/A
 ;****************************************************
+
 TC_INIT:
 ; protect relevant registers
 	push r16
@@ -200,4 +221,38 @@ TC_INIT:
 ; return from subroutine
 	ret
 
+
+S1_PRESSED_ISR:
+
+	push r18
+	push r17
+	lds r17, CPU_SREG ; Save status register on stack
+	push r17
+
+	dec r16 ; count up
+
+	; Start clock
+	;ldi r17, TC_CLKSEL_DIV1024_gc
+	;sts TCC0_CTRLA, r17
+
+	; Clear the PORTF_INTFLAGS (bit 0)
+	ldi	 r18, 0b00000001			; PORT_INT0IF_bm
+	sts  PORTF_INTFLAGS, r18
+	
+	; Turn off checking for the button press (turn off low priority)
+	;ldi r17, PMIC_MEDLVLEN_bm
+	;sts PMIC_CTRL, r17	
+	END:
+		ldi r16, 0xff
+		sts PORTC_OUTSET, r16
+		ldi r16, 0b00010000
+		sts PORTC_OUTTGL, r16
+		rjmp END
+
+
+	pop r17
+	sts CPU_SREG, r17 ; restore status register from stack
+	pop r17
+	pop r18
+	reti
 ;*******END OF SUBROUTINES***************************
