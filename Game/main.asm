@@ -26,6 +26,11 @@
 .equ ANIMATION_START_ADDR	=	0x2000 ;useful, but not required
 .equ stack_init				=   0x3FFF
 .equ HIGHSCORE_ADDR			=	0x2000 ;
+.def COUNTER = r20 ; used to keep score
+.def STAGE_COMING = r21 ; used to define the calling stage for interrupts
+.def STAGE_GOING = r22 ; used to figure out which stage to go to next
+.def CURSOR = r18 ; Used for cursor
+.def TARGET = r23 ;
 ;*******END OF DEFINED SYMBOLS***********************
 
 ;*******MEMORY CONSTANTS*****************************
@@ -89,8 +94,8 @@ MAIN:
 	sts PMIC_CTRL, r16
 
 	; Clear the PORTF_INTFLAGS (bit 0)
-	ldi	 r18, 0b00000001			; PORT_INT0IF_bm
-	sts  PORTF_INTFLAGS, r18
+	ldi	 r16, 0b00000001			; PORT_INT0IF_bm
+	sts  PORTF_INTFLAGS, r16
 
 ; initialize relevant I/O modules (switches and LEDs)
 	rcall IO_INIT
@@ -108,7 +113,10 @@ PLAY:
 ; within the animation table to play animation from first frame.
 	ldi ZL, 0x00
 	ldi ZH, 0x40
+	ldi XL, low(HIGHSCORE_ADDR)
+	ldi XH, high(HIGHSCORE_ADDR)
 	ldi r19, 0
+	ldi STAGE_COMING, 1
 
 PLAY_LOOP:
 
@@ -154,9 +162,13 @@ TIMER_LOOP3:
 
 	inc r19
 
+	cpi STAGE_GOING, 2
+	breq GAMEPLAY
+
 	rjmp PLAY_LOOP
 
-
+GAMEPLAY:
+	
 
 ; end of program (never reached)
 DONE: 
@@ -224,35 +236,62 @@ TC_INIT:
 
 S1_PRESSED_ISR:
 
-	push r18
+
+	push r16
 	push r17
 	lds r17, CPU_SREG ; Save status register on stack
 	push r17
 
-	dec r16 ; count up
+	cpi STAGE_COMING, 1
+	breq GO_STAGE2
+	rjmp CHECK2
 
-	; Start clock
-	;ldi r17, TC_CLKSEL_DIV1024_gc
-	;sts TCC0_CTRLA, r17
+	GO_STAGE2:
+		ldi STAGE_GOING, 2
 
+	CHECK2:
+		cpi STAGE_COMING, 2
+		breq MANAGE_ATTEMPT
+		rjmp CONTINUE
+	MANAGE_ATTEMPT:
+		mov r17, CURSOR
+		and CURSOR, TARGET
+		cpi CURSOR, 0
+		brne HIT
+		; Otherwise assume not hit
+		; Set Z to starting address
+		; Branch back to STAGE_1
+		mov CURSOR, r17
+		ldi STAGE_GOING, 1
+		rjmp CONTINUE
+
+	HIT:
+		mov CURSOR, r17
+		inc COUNTER
+		ld r0, Z+
+		ld r17, X
+		cp r17, COUNTER
+		brlo UPDATE_HS
+		rjmp CONTINUE
+
+	UPDATE_HS:
+		st X, COUNTER
+		
+		
+
+	CONTINUE:
 	; Clear the PORTF_INTFLAGS (bit 0)
-	ldi	 r18, 0b00000001			; PORT_INT0IF_bm
-	sts  PORTF_INTFLAGS, r18
+	ldi	 r16, 0b00000001			; PORT_INT0IF_bm
+	sts  PORTF_INTFLAGS, r16
 	
 	; Turn off checking for the button press (turn off low priority)
 	;ldi r17, PMIC_MEDLVLEN_bm
 	;sts PMIC_CTRL, r17	
-	END:
-		ldi r16, 0xff
-		sts PORTC_OUTSET, r16
-		ldi r16, 0b00010000
-		sts PORTC_OUTTGL, r16
-		rjmp END
 
 
 	pop r17
 	sts CPU_SREG, r17 ; restore status register from stack
 	pop r17
-	pop r18
+	pop r16
 	reti
 ;*******END OF SUBROUTINES***************************
