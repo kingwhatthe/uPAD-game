@@ -1,24 +1,10 @@
 ;******************************************************************************
-;  File name: lab2_s26_4_skeleton.asm
-;  Author: Christopher Crary
-;  Last Modified By: Sabal Schuster
-;  Last Modified On: 14 Feb 2026
-;  Purpose: To allow LED animations to be created with the OOTB uPAD, 
-;			OOTB SLB, and OOTB MB.
-;
-;  NOTE: The use of this file is NOT required! This file is just given
-;        as an example for how to potentially write code more effectively.
-;******************************************************************************
-;Lab 1, Section 1
+;main.asm
 ;Name: Sabal Schuster
-;Class #: 11091
-;PI Name: William Shaul
-;Description: This program allows the user to create and playback LED animations on the OOTB uPAD and SLB
+;Hardware: ATxmega128A1U
+;Description: This is a game program. See README.md for full game description
 ;*******INCLUDES*************************************
 
-; The inclusion of the following file is REQUIRED for our course, since
-; it is intended that you understand concepts regarding how to specify an 
-; "include file" to an assembler. 
 .include "ATxmega128a1udef.inc"
 ;*******END OF INCLUDES******************************
 
@@ -53,6 +39,12 @@ LEVEL_END_ADDR:
 .equ NUMBER_OF_LEVELS = LEVEL_END_ADDR - LEVEL_START_ADDR
 ;*******END OF MEMORY CONSTANTS**********************
 
+
+
+
+
+.cseg
+
 ;*******INTERRUPT VECTORS****************************
 .org PORTF_INT0_vect ; Port F interrupt (S1)
 	rjmp S1_PRESSED_ISR		
@@ -62,11 +54,8 @@ LEVEL_END_ADDR:
 ;	rjmp RESET_ANIMATION	
  ;*******END OF INTERRUPT VECTORS*********************
 
+ ;*******MAIN PROGRAM*********************************
 
-;*******MAIN PROGRAM*********************************
-.cseg
-; upon system reset, jump to main program (instead of executing
-; instructions meant for interrupt vectors)
 .org 0x00
 	rjmp MAIN
 
@@ -316,6 +305,13 @@ TC_INIT:
 ; return from subroutine
 	ret
 
+
+;****************************************************
+; Name: S1_PRESSED_ISR 
+; Purpose: (Insert purpose here)
+; Input(s): STAGE_COMING, COUNTER, Memory at X
+; Output: STAGE_GOING, COUNTER, Memory at X
+;****************************************************
 
 S1_PRESSED_ISR:
 
