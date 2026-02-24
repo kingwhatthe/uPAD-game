@@ -15,9 +15,9 @@
 .equ HIGHSCORE_ADDR			=	0x2000 ;
 .def COUNTER = r20 ; used to keep score
 .def STAGE_COMING = r21 ; used to define the calling stage for interrupts
-.def STAGE_GOING = r22 ; used to figure out which stage to go to next
+.def STAGE_GOING = r22 ; used to figure out which stage to go to next after an interrupt
 .def CURSOR = r18 ; Used for cursor
-.def TARGET = r23 ;
+.def TARGET = r23 ; Target bit for the cursor to land on
 ;*******END OF DEFINED SYMBOLS***********************
 
 ;*******MEMORY CONSTANTS*****************************
@@ -220,7 +220,7 @@ GAME_LOOP:
 	sts TCC0_CTRLA, r16
 
 	; Set the frame rate to run at 200ms (40ms * 5 = 200ms = 5Hz)
-	ldi r17, 5
+	ldi r17, 10
 
 TIMER_LOOP4:
 	lds r16, TCC0_INTFLAGS
@@ -315,7 +315,7 @@ TC_INIT:
 
 S1_PRESSED_ISR:
 
-
+	push r24
 	push r16
 	push r17
 	lds r17, CPU_SREG ; Save status register on stack
@@ -359,7 +359,43 @@ S1_PRESSED_ISR:
 	UPDATE_HS:
 		st X, COUNTER
 		
-		
+
+	; Turn on clock
+	ldi r16, TC_CLKSEL_DIV256_gc
+	sts TCC0_CTRLA, r16
+	ldi r24, 0
+TIMER_LOOP5:
+; Load OVFIF flag
+	lds r16, TCC0_INTFLAGS
+
+	;Check SL1
+	lds r17, PORTF_IN
+	sbrs r16, 0
+	rjmp TIMER_LOOP5
+
+	; If pressed and value in r24 is true
+	sbrc r17, 2
+	cpi r24, 1 
+	breq FINISH_DEBOUNCING ; 
+
+CONTINUE2:
+	
+	; if value is pressed, set r24 to true
+	sbrs r17, 2 
+	ldi r24, 1
+
+	; reset flag
+	ldi r16, 0b00000001
+	sts TCC0_INTFLAGS, r16
+	rjmp TIMER_LOOP5
+
+FINISH_DEBOUNCING:
+	
+	ldi r24, 0 ; reset pressed flag (false)
+	; Turn on clock
+	ldi r16, TC_CLKSEL_DIV1024_gc
+	sts TCC0_CTRLA, r16
+
 
 	CONTINUE:
 	; Clear the PORTF_INTFLAGS (bit 0)
@@ -375,5 +411,10 @@ S1_PRESSED_ISR:
 	sts CPU_SREG, r17 ; restore status register from stack
 	pop r17
 	pop r16
+	pop r24
+	reti
+
+S2_PRESSED_ISR:
+	
 	reti
 ;*******END OF SUBROUTINES***************************
