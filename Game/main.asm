@@ -112,6 +112,7 @@ MAIN:
 
 	ldi XL, low(HIGHSCORE_ADDR)
 	ldi XH, high(HIGHSCORE_ADDR)
+	st X, r0 ; initialize high score to be zero
 
 ; initialize relevant I/O modules (switches and LEDs)
 	rcall IO_INIT
