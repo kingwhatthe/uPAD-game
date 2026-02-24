@@ -253,8 +253,10 @@ GAME_LOOP:
 	sts TCC0_CTRLA, r16
 
 	; Set the frame rate to run at 200ms (40ms * 5 = 200ms = 5Hz)
-	ldi r17, 11
-	sub r17, r15
+	ldi r17, 17
+	mov r16, r15 ; double the subtraction (make it go faster)
+	lsl r16
+	sub r17, r16 ; Speed up frame rate based on definition in level
 
 TIMER_LOOP4:
 	lds r16, TCC0_INTFLAGS
