@@ -291,8 +291,8 @@ IO_INIT:
 	; Set DIP switches to input ports
 	sts PORTA_DIRCLR, r16
 
-	; Set S1 of OOTB MB to input port
-	ldi r16, 0b10000000
+	; Set S1 and S2 of OOTB MB to input port
+	ldi r16, 0b11000000
 	sts PORTE_DIRCLR, r16
 
 ; recover relevant registers
@@ -448,13 +448,32 @@ S2_MB_PRESSED_ISR:
 	ldi r16, 0xff
 	sts PORTC_OUTSET, r16
 
-	; Continuously display score and wait to be interrupted
-	DISPLAY:
-		sts PORTC_OUT, COUNTER
+	cpi STAGE_COMING, 2
+	breq SET_CURRENT_SCORE
+
+	cpi STAGE_COMING, 1
+	breq SET_HIGH_SCORE
+
+	SET_CURRENT_SCORE:
+		mov r17, COUNTER
 		rjmp DISPLAY
 
+	SET_HIGH_SCORE:
+		ld r17, X
+		rjmp DISPLAY
+
+	; Continuously display score and poll for SLB2
+	DISPLAY:
+		lds r16, PORTF_IN
+		sbrs r16, 3
+		rjmp END_S2
+		sts PORTC_OUT, r17
+		rjmp DISPLAY
+
+	END_S2:
 	pop r17
 	sts CPU_SREG, r17 ; restore status register from stack
 	pop r17
 	pop r16
+	reti
 ;*******END OF SUBROUTINES***************************
