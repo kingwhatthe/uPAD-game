@@ -47,7 +47,9 @@ LEVEL_END_ADDR:
 
 ;*******INTERRUPT VECTORS****************************
 .org PORTF_INT0_vect ; Port F interrupt (S1)
-	rjmp S1_PRESSED_ISR		
+	rjmp S1_PRESSED_ISR
+.org PORTE_INT0_vect ; Port F interrupt (S1)
+	rjmp S2_MB_PRESSED_ISR				
 ; .org TCC0_OVF_vect ; Timer overflow interrupt
 ;	rjmp DEBOUNCE_OVER_ISR	
 ;.org TCD0_OVF_vect ; Timer overflow interrupt
@@ -80,17 +82,33 @@ MAIN:
 	ldi r16, 0b00000100		
 	sts PORTF_INT0MASK, r16
 
-	; Set the PORTF interrupt to low priority
-	ldi r16, 0b00000001
+	; Set bit 0 of PORTE to trigger the interrupt
+	ldi r16, 0b00000001		
+	sts PORTE_INT0MASK, r16
+
+	; Set the PORTF interrupt to medium priority
+	ldi r16, PMIC_MEDLVLEN_bm
 	sts PORTF_INTCTRL, r16
 
+	; Set the PORTE interrupt to low priority
+	ldi r16, PMIC_LOLVLEN_bm
+	sts PORTE_INTCTRL, r16
+
 	; Set PMIC to low and medium priority (PMIC_LOLVLEN_bm and PMIC_MEDLVLEN_bm)
-	ldi r16, PMIC_LOLVLEN_bm		
+	ldi r16, 0x03	
 	sts PMIC_CTRL, r16
+
 
 	; Clear the PORTF_INTFLAGS (bit 0)
 	ldi	 r16, 0b00000001			; PORT_INT0IF_bm
 	sts  PORTF_INTFLAGS, r16
+
+	; Clear the PORTE_INTFLAGS (bit 0)
+	ldi	 r16, 0b00000001			; PORT_INT0IF_bm
+	sts  PORTE_INTFLAGS, r16
+
+	; set counter to zero
+	ldi COUNTER, 0xff
 
 ; initialize relevant I/O modules (switches and LEDs)
 	rcall IO_INIT
@@ -349,10 +367,10 @@ S1_PRESSED_ISR:
 	HIT:
 		mov CURSOR, r17
 		ldi STAGE_COMING, 5
-		inc COUNTER
+		dec COUNTER
 		ld r0, Z+
 		ld r17, X
-		cp r17, COUNTER
+		cp COUNTER, r17
 		brlo UPDATE_HS
 		
 
@@ -414,7 +432,29 @@ FINISH_DEBOUNCING:
 	pop r24
 	reti
 
-S2_PRESSED_ISR:
-	
-	reti
+;****************************************************
+; Name: S2_MB_PRESSED_ISR 
+; Purpose: (Insert purpose here)
+; Input(s): STAGE_COMING, COUNTER, Memory at X
+; Output: N/A
+;****************************************************
+S2_MB_PRESSED_ISR:
+	push r16
+	push r17
+	lds r17, CPU_SREG ; Save status register on stack
+	push r17
+
+	; Turn LEDs off
+	ldi r16, 0xff
+	sts PORTC_OUTSET, r16
+
+	; Continuously display score and wait to be interrupted
+	DISPLAY:
+		sts PORTC_OUT, COUNTER
+		rjmp DISPLAY
+
+	pop r17
+	sts CPU_SREG, r17 ; restore status register from stack
+	pop r17
+	pop r16
 ;*******END OF SUBROUTINES***************************
