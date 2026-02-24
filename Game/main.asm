@@ -108,7 +108,10 @@ MAIN:
 	sts  PORTE_INTFLAGS, r16
 
 	; set counter to zero
-	ldi COUNTER, 0xff
+	ldi COUNTER, 0
+
+	ldi XL, low(HIGHSCORE_ADDR)
+	ldi XH, high(HIGHSCORE_ADDR)
 
 ; initialize relevant I/O modules (switches and LEDs)
 	rcall IO_INIT
@@ -126,8 +129,6 @@ PLAY:
 ; within the animation table to play animation from first frame.
 	ldi ZL, 0x00
 	ldi ZH, 0x40
-	ldi XL, low(HIGHSCORE_ADDR)
-	ldi XH, high(HIGHSCORE_ADDR)
 	ldi r19, 0
 	ldi STAGE_COMING, 1
 
@@ -183,7 +184,6 @@ TIMER_LOOP3:
 PLAY2:
 	rjmp PLAY
 GAMEPLAY:
-	;Set the Z pointer to the level address
 
 	ldi STAGE_COMING, 2
 	; Load level
@@ -358,28 +358,31 @@ S1_PRESSED_ISR:
 		cpi CURSOR, 0
 		brne HIT
 		; Otherwise assume not hit
+		;Reset COUNTER
+		ldi COUNTER, 0
 		; Set Z to starting address
 		; Branch back to STAGE_1
 		mov CURSOR, r17
 		ldi STAGE_GOING, 1
-		rjmp CONTINUE
+		rjmp TIMER_LOOP5
 
 	HIT:
 		mov CURSOR, r17
 		ldi STAGE_COMING, 5
-		dec COUNTER
+		inc COUNTER
 		ld r0, Z+
 		ld r17, X
-		cp COUNTER, r17
+		cp r17, COUNTER
 		brlo UPDATE_HS
-		
+		rjmp DONT_UPDATE
 
 	UPDATE_HS:
 		st X, COUNTER
-		
+	
+	DONT_UPDATE:
 
 	; Turn on clock
-	ldi r16, TC_CLKSEL_DIV256_gc
+	ldi r16, TC_CLKSEL_DIV1024_gc
 	sts TCC0_CTRLA, r16
 	ldi r24, 0
 TIMER_LOOP5:
@@ -402,12 +405,30 @@ CONTINUE2:
 	sbrs r17, 2 
 	ldi r24, 1
 
+
+
+
 	; reset flag
 	ldi r16, 0b00000001
 	sts TCC0_INTFLAGS, r16
 	rjmp TIMER_LOOP5
 
 FINISH_DEBOUNCING:
+	
+	;loop until done being pressed
+	SMOL_LOOP:
+		lds r16, TCC0_INTFLAGS
+		sbrs r16, 0
+		rjmp SMOL_LOOP
+		; reset flag
+		ldi r16, 0b00000001
+		sts TCC0_INTFLAGS, r16
+		;Check SL2
+		lds r17, PORTF_IN
+		sbrs r17, 2
+		rjmp SMOL_LOOP
+
+
 	
 	ldi r24, 0 ; reset pressed flag (false)
 	; Turn on clock
@@ -419,10 +440,6 @@ FINISH_DEBOUNCING:
 	; Clear the PORTF_INTFLAGS (bit 0)
 	ldi	 r16, 0b00000001			; PORT_INT0IF_bm
 	sts  PORTF_INTFLAGS, r16
-	
-	; Turn off checking for the button press (turn off low priority)
-	;ldi r17, PMIC_MEDLVLEN_bm
-	;sts PMIC_CTRL, r17	
 
 
 	pop r17
@@ -439,6 +456,7 @@ FINISH_DEBOUNCING:
 ; Output: N/A
 ;****************************************************
 S2_MB_PRESSED_ISR:
+	cli
 	push r16
 	push r17
 	lds r17, CPU_SREG ; Save status register on stack
@@ -456,12 +474,15 @@ S2_MB_PRESSED_ISR:
 
 	SET_CURRENT_SCORE:
 		mov r17, COUNTER
-		rjmp DISPLAY
+		rjmp START
 
 	SET_HIGH_SCORE:
 		ld r17, X
-		rjmp DISPLAY
-
+		rjmp START
+	START: 
+		; turn r17 into properly displayable stuff
+		neg r17 
+		dec r17
 	; Continuously display score and poll for SLB2
 	DISPLAY:
 		lds r16, PORTF_IN
@@ -471,9 +492,14 @@ S2_MB_PRESSED_ISR:
 		rjmp DISPLAY
 
 	END_S2:
+	; Clear the PORTF_INTFLAGS (bit 0)
+	ldi	 r16, 0b00000001			; PORT_INT0IF_bm
+	sts  PORTF_INTFLAGS, r16
+
 	pop r17
 	sts CPU_SREG, r17 ; restore status register from stack
 	pop r17
 	pop r16
+	sei
 	reti
 ;*******END OF SUBROUTINES***************************
