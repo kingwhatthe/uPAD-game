@@ -11,7 +11,7 @@
 ;*******DEFINED SYMBOLS******************************
 .equ ANIMATION_START_ADDR	=	0x2000 ;useful, but not required
 .equ stack_init				=   0x3FFF
-.equ LEVEL_START_ADDR		=   0x3000	
+.equ LEVEL_START_ADDR		=   0x3000	; 
 .equ HIGHSCORE_ADDR			=	0x2000 ;
 .def COUNTER = r20 ; used to keep score
 .def STAGE_COMING = r21 ; used to define the calling stage for interrupts
@@ -34,9 +34,9 @@ ANIMATION_END_ADDR:
 .equ ANIMATION_SIZE = ANIMATION_START_ADDR - ANIMATION_END_ADDR
 
 .org LEVEL_START_ADDR
-;First 2 bits: cursor width
-;Middle 3 bits: Speed of Cursor
-;Last 3 bits: position of target
+;First (left) 2 bits: Cursor Width
+;Middle 3 bits: Speed of Cursor (by a large factor)
+;Last 3 bits: position of Target
 .db 0b11000010, 0b11000011, 0b11000110, 0b11000100, 0b11001010, 0b11001011, 0b10010111,  0b10010101, 0b10010100, 0b10010101, 0b10001111, 0b10001101, 0b10010101, 0b10010100, 0b10010101, 0b10010100, 0b10010011,  0b10010001, 0b10010111, 0b10010001, 0b10100010, 0b10100011, 0b10100110, 0b10100100, 0b10100101, 0b01100100, 0b01100001, 0b01100100, 0b01100001,0b01100100, 0b01100101, 0b01100111, 0b01101011, 0b01101001, 0b01101010, 0b01101111, 0b01111010, 0b01111101, 0b01111001, 0b01111111
 LEVEL_END_ADDR:
 .equ NUMBER_OF_LEVELS = LEVEL_END_ADDR - LEVEL_START_ADDR
@@ -64,8 +64,7 @@ LEVEL_END_ADDR:
 .org 0x00
 	rjmp MAIN
 
-; place the main program somewhere after interrupt vectors (ignore for now)
-.org 0x100		; >= 0xFD
+.org 0x100
 MAIN:
 ; initialize the stack pointer
 ;Below taken copied over from Stack example
@@ -77,6 +76,7 @@ MAIN:
 	out CPU_SPH, r16		;initialize high byte of stack pointer 
 ; sts or out will work above, but out will ONLY work for addresses 
 ;END OF COPY
+
 ; Sets the timer interrupt to medium priority
 	;ldi r16, TC_OVFINTLVL_MED_gc 
 	;sts TCC0_INTCTRLA, r16
@@ -132,27 +132,17 @@ PLAY:
 ; Reload the relevant index to the first memory location
 ; within the animation table to play animation from first frame.
 	ldi ZL, 0x00
-	ldi ZH, 0x40
-	ldi r19, 0
+	ldi ZH, 0x40 ; had to double the actual address because program memory stores words not bytes
+	ldi r19, 0 ; set frame counter to 0 (used to check if end of animation is reached
 	ldi STAGE_COMING, 1
 
 PLAY_LOOP:
 
 	cpi r19, ANIMATION_SIZE
 
-; If index values are equal, branch back to "PLAY" to
-; restart the animation.
+; If r19 reaches the end of the animation, then branch back and reset Z pointer
 
 	breq PLAY
-
-; Otherwise, load animation frame from table, 
-; display this "frame" on the relevant LEDs,
-; start relevant timer/counter,
-; wait until this timer/counter overflows (to more or less
-; achieve the "frame rate"), and then after the overflow,
-; stop the timer/counter,
-; clear the relevant OVFIF flag,
-; and then jump back to "PLAY_LOOP".
 
 	lpm r16, Z ; Load animation frame
 	lpm r17, Z+
@@ -425,7 +415,7 @@ S1_PRESSED_ISR:
 	DONT_UPDATE:
 
 	; Turn on clock
-	ldi r16, TC_CLKSEL_DIV1024_gc
+	ldi r16, TC_CLKSEL_DIV256_gc
 	sts TCC0_CTRLA, r16
 	ldi r24, 0
 TIMER_LOOP5:
@@ -475,7 +465,7 @@ FINISH_DEBOUNCING:
 	
 	ldi r24, 0 ; reset pressed flag (false)
 	; Turn on clock
-	ldi r16, TC_CLKSEL_DIV1024_gc
+	ldi r16, TC_CLKSEL_DIV256_gc
 	sts TCC0_CTRLA, r16
 
 
