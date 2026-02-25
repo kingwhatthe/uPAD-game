@@ -37,7 +37,7 @@ ANIMATION_END_ADDR:
 ;First 2 bits: cursor width
 ;Middle 3 bits: Speed of Cursor
 ;Last 3 bits: position of target
-.db 0b11000010, 0b11000100, 0b11000001, 0b11000110, 0b11000111, 0b11000010, 0b11000101, 0b11001101, 0b11001001, 0b11010111, 0b11010011, 0b11011010, 0b11100110,  0b11100011,  0b11101110, 0b11101100
+.db 0b11000010, 0b11000011, 0b11000110, 0b11000100, 0b11001010, 0b11001011, 0b10010111,  0b10010101, 0b10010100, 0b10010101, 0b10001111, 0b10001101, 0b10010101, 0b10010100, 0b10010101, 0b10010100, 0b10010011,  0b10010001, 0b10010111, 0b10010001, 0b10100010, 0b10100011, 0b10100110, 0b10100100, 0b10100101, 0b01100100, 0b01100001, 0b01100100, 0b01100001,0b01100100, 0b01100101, 0b01100111, 0b01101011, 0b01101001, 0b01101010, 0b01101111, 0b01111010, 0b01111101, 0b01111001, 0b01111111
 LEVEL_END_ADDR:
 .equ NUMBER_OF_LEVELS = LEVEL_END_ADDR - LEVEL_START_ADDR
 ;*******END OF MEMORY CONSTANTS**********************
@@ -185,8 +185,7 @@ TIMER_LOOP3:
 
 	rjmp PLAY_LOOP
 
-PLAY2:
-	rjmp PLAY
+
 GAMEPLAY:
 
 	ldi STAGE_COMING, 2
@@ -202,9 +201,32 @@ GAMEPLAY:
 		dec r16
 		brne SHIFT_TARGET
 
+	;Set up CURSOR
+	ldi r16, 0b11000000
+	and r16, r15
+		;SHIFT_LOGIC:
+		;lsr r16
+		;cpi r16, 4
+		;brpl SHIFT_LOGIC
+	lsr r16
+	lsr r16
+	lsr r16
+	lsr r16
+	lsr r16
+	lsr r16
+	
+	ldi CURSOR, 0
+	ldi r17, 1
+	SHIFT_CURSOR:
+		lsl CURSOR
+		or CURSOR, r17
+		dec r16
+		brne SHIFT_CURSOR
+
+	; default set up cursor to size 2
+	;ldi CURSOR, 0b00000011
 
 	;Set up Speed
-	;Set up target
 	ldi r16, 0b00111000
 	and r15, r16
 	lsr r15
@@ -212,13 +234,14 @@ GAMEPLAY:
 	lsr r15
 
 
-	;Set up CURSOR
 
-
-	; default set up cursor to size 2
-	ldi CURSOR, 0b00000011
 
 	ldi r24, 0 ; If set its moving right
+	rjmp GAME_LOOP
+PLAY2:
+	rjmp PLAY
+GAMEPLAY2:
+	rjmp GAMEPLAY
 
 GAME_LOOP:
 
@@ -249,12 +272,14 @@ GAME_LOOP:
 	sts PORTC_OUTCLR, TARGET
 
 	; Turn on clock
-	ldi r16, TC_CLKSEL_DIV1024_gc
+	ldi r16, TC_CLKSEL_DIV64_gc
 	sts TCC0_CTRLA, r16
 
 	; Set the frame rate to run at 200ms (40ms * 5 = 200ms = 5Hz)
-	ldi r17, 17
+	ldi r17, 75
 	mov r16, r15 ; double the subtraction (make it go faster)
+	lsl r16
+	lsl r16
 	lsl r16
 	sub r17, r16 ; Speed up frame rate based on definition in level
 
@@ -272,7 +297,7 @@ TIMER_LOOP4:
 	sts TCC0_CTRLA, r16
 
 	cpi STAGE_COMING, 5
-	breq GAMEPLAY
+	breq GAMEPLAY2
 
 	cpi STAGE_GOING, 1
 	breq PLAY2
