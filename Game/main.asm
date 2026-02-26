@@ -33,10 +33,10 @@
 ANIMATION_END_ADDR:
 .equ ANIMATION_SIZE = ANIMATION_START_ADDR - ANIMATION_END_ADDR
 
-.org LEVEL_START_ADDR
 ;First (left) 2 bits: Cursor Width
 ;Middle 3 bits: Speed of Cursor (by a large factor)
 ;Last 3 bits: position of Target
+.org LEVEL_START_ADDR
 .db 0b11000010, 0b11000011, 0b11000110, 0b11000100, 0b11001010, 0b11001011, 0b10010111,  0b10010101, 0b10010100, 0b10010101, 0b10001111, 0b10001101, 0b10010101, 0b10010100, 0b10010101, 0b10010100, 0b10010011,  0b10010001, 0b10010111, 0b10010001, 0b10100010, 0b10100011, 0b10100110, 0b10100100, 0b10100101, 0b01100100, 0b01100001, 0b01100100, 0b01100001,0b01100100, 0b01100101, 0b01100111, 0b01101011, 0b01101001, 0b01101010, 0b01101111, 0b01111010, 0b01111101, 0b01111001, 0b01111111
 LEVEL_END_ADDR:
 .equ NUMBER_OF_LEVELS = LEVEL_END_ADDR - LEVEL_START_ADDR
@@ -50,13 +50,9 @@ LEVEL_END_ADDR:
 
 ;*******INTERRUPT VECTORS****************************
 .org PORTF_INT0_vect ; Port F interrupt (S1)
-	rjmp S1_PRESSED_ISR
-.org PORTE_INT0_vect ; Port F interrupt (S1)
-	rjmp S2_MB_PRESSED_ISR				
-; .org TCC0_OVF_vect ; Timer overflow interrupt
-;	rjmp DEBOUNCE_OVER_ISR	
-;.org TCD0_OVF_vect ; Timer overflow interrupt
-;	rjmp RESET_ANIMATION	
+	rjmp S1_SLB_PRESSED_ISR
+.org PORTE_INT0_vect ; Port E interrupt (S1)
+	rjmp S1_MB_PRESSED_ISR				
  ;*******END OF INTERRUPT VECTORS*********************
 
  ;*******MAIN PROGRAM*********************************
@@ -145,7 +141,7 @@ PLAY_LOOP:
 	breq PLAY
 
 	lpm r16, Z ; Load animation frame
-	lpm r17, Z+
+	lpm r17, Z+ ; have to read in the full 16 bit word in order to read properly (r17 isnt used)
 	sts PORTC_OUT, r16 ; Display frame
 
 	; Turn on clock
@@ -170,92 +166,54 @@ TIMER_LOOP3:
 
 	inc r19 ; increment animation counter
 
-	cpi STAGE_GOING, 2
+	; If the transition flag is set (from the SLB S1 interrupt) then go to the game
+	cpi STAGE_GOING, 2 
 	breq GAMEPLAY
 
 	rjmp PLAY_LOOP
 
-
+;Gameplay loop starts
 GAMEPLAY:
 
-	ldi STAGE_COMING, 2
-	; Load level
-	lpm r15, Z+
+	rcall LEVEL_INIT
 
-	;Set up target
-	ldi r16, 0b00000111
-	and r16, r15
-	ldi TARGET, 1
-	SHIFT_TARGET:
-		lsl TARGET
-		dec r16
-		brne SHIFT_TARGET
-
-	;Set up CURSOR
-	ldi r16, 0b11000000
-	and r16, r15
-		;SHIFT_LOGIC:
-		;lsr r16
-		;cpi r16, 4
-		;brpl SHIFT_LOGIC
-	lsr r16
-	lsr r16
-	lsr r16
-	lsr r16
-	lsr r16
-	lsr r16
-	
-	ldi CURSOR, 0
-	ldi r17, 1
-	SHIFT_CURSOR:
-		lsl CURSOR
-		or CURSOR, r17
-		dec r16
-		brne SHIFT_CURSOR
-
-	; default set up cursor to size 2
-	;ldi CURSOR, 0b00000011
-
-	;Set up Speed
-	ldi r16, 0b00111000
-	and r15, r16
-	lsr r15
-	lsr r15
-	lsr r15
-
-
-
-
-	ldi r24, 0 ; If set its moving right
+	; the following 4 lines are double branches so that the program can move around properly (probably should find a better way to do this...
 	rjmp GAME_LOOP
 PLAY2:
 	rjmp PLAY
-GAMEPLAY2:
-	rjmp GAMEPLAY
+
 
 GAME_LOOP:
 
+	; Check if the cursor is against the right wall
 	sbrc CURSOR, 0
 	rjmp START_LEFT
 
+	; Check if the cursor is against the left wall
 	sbrc CURSOR, 7
 	rjmp START_RIGHT
 	rjmp MOVE
 
+	;Switch directions to left
 	START_LEFT:
 		ldi r24, 0
 	rjmp MOVE
 
+	;Switch directions to right
 	START_RIGHT:
 		ldi r24, 1
 	
+	; Shift either left or right by one LED
 	MOVE:
+		; move left
 		sbrs r24, 0
 		lsl CURSOR
 
+		;move right
 		sbrc r24, 0
 		lsr CURSOR
 
+	; update LEDs
 	ldi r25, 0xff
 	sts PORTC_OUTSET, r25
 	sts PORTC_OUTCLR, CURSOR
@@ -287,7 +245,7 @@ TIMER_LOOP4:
 	sts TCC0_CTRLA, r16
 
 	cpi STAGE_COMING, 5
-	breq GAMEPLAY2
+	breq GAMEPLAY
 
 	cpi STAGE_GOING, 1
 	breq PLAY2
@@ -356,15 +314,79 @@ TC_INIT:
 ; return from subroutine
 	ret
 
+;****************************************************
+; Name: LEVEL_INIT 
+; Purpose: To load from program memory and initialize registers 
+;          related to the gameplay level
+; Input(s): Z
+; Output: r24, r15, Z
+;****************************************************
+
+LEVEL_INIT: 
+
+	push r16
+	push r17
+
+	; Indicate which stage the program is on (for the purpose of the MB S2 interrupt
+	ldi STAGE_COMING, 2
+	; Load level
+	lpm r15, Z+
+
+	;Set up target
+	ldi r16, 0b00000111
+	and r16, r15
+	ldi TARGET, 1
+	SHIFT_TARGET:
+		lsl TARGET
+		dec r16
+		brne SHIFT_TARGET
+
+	;Set up CURSOR size
+	ldi r16, 0b11000000
+	ldi r17, 6
+	and r16, r15
+		SHIFT_LOGIC: ; move r16 to the front
+		lsr r16
+		dec r17
+		brne SHIFT_LOGIC
+	
+	; Set up CURSOR 
+	ldi CURSOR, 0
+	ldi r17, 1
+	SHIFT_CURSOR:
+		lsl CURSOR
+		or CURSOR, r17
+		dec r16
+		brne SHIFT_CURSOR
+
+	; default set up cursor to size 2
+	;ldi CURSOR, 0b00000011
+
+	;Set up Speed
+	ldi r16, 0b00111000
+	and r15, r16
+	lsr r15
+	lsr r15
+	lsr r15
+
+	ldi r24, 0 ; If set its moving right
+
+	pop r17
+	pop r16
+	ret
 
 ;****************************************************
-; Name: S1_PRESSED_ISR 
-; Purpose: (Insert purpose here)
+; Name: S1_SLB_PRESSED_ISR 
+; Purpose: This is the general ISR for the SLB S1 button. It will determine what
+; actions to take depending on STAGE_COMING:
+; 1) if STAGE_COMING == 1, then the ISR will set up to start the gameplay loop
+; 2) if STAGE_COMING == 2, then the ISR will check if there is a hit between
+;		the target and cursor and then will handle the logic appropriately. 
 ; Input(s): STAGE_COMING, COUNTER, Memory at X
 ; Output: STAGE_GOING, COUNTER, Memory at X
 ;****************************************************
 
-S1_PRESSED_ISR:
+S1_SLB_PRESSED_ISR:
 
 	push r24
 	push r16
@@ -381,6 +403,7 @@ S1_PRESSED_ISR:
 		ldi ZL, 0x00
 		ldi ZH, 0x60
 
+		; if coming from the gameplay loop, check if its a hit
 	CHECK2:
 		cpi STAGE_COMING, 2
 		breq MANAGE_ATTEMPT
@@ -399,14 +422,15 @@ S1_PRESSED_ISR:
 		ldi STAGE_GOING, 1
 		rjmp TIMER_LOOP5
 
+	; 
 	HIT:
 		mov CURSOR, r17
-		ldi STAGE_COMING, 5
+		ldi STAGE_COMING, 5 ; Set STAGE_COMING so that level advances
 		inc COUNTER
-		ld r0, Z+
-		ld r17, X
+		ld r0, Z+ ; Increment Z pointer
+		ld r17, X ; Load in HS
 		cp r17, COUNTER
-		brlo UPDATE_HS
+		brlo UPDATE_HS ; if HS is less than COUNTER then update HS
 		rjmp DONT_UPDATE
 
 	UPDATE_HS:
@@ -418,6 +442,8 @@ S1_PRESSED_ISR:
 	ldi r16, TC_CLKSEL_DIV256_gc
 	sts TCC0_CTRLA, r16
 	ldi r24, 0
+
+; use polling to debounce
 TIMER_LOOP5:
 ; Load OVFIF flag
 	lds r16, TCC0_INTFLAGS
@@ -437,9 +463,6 @@ CONTINUE2:
 	; if value is pressed, set r24 to true
 	sbrs r17, 2 
 	ldi r24, 1
-
-
-
 
 	; reset flag
 	ldi r16, 0b00000001
@@ -483,13 +506,14 @@ FINISH_DEBOUNCING:
 	reti
 
 ;****************************************************
-; Name: S2_MB_PRESSED_ISR 
-; Purpose: (Insert purpose here)
+; Name: S1_MB_PRESSED_ISR 
+; Purpose: If MB S2 is pressed, then the program will pause stage 1 or 2 
+; and continuously display the high score until SLB S2 is pressed
 ; Input(s): STAGE_COMING, COUNTER, Memory at X
 ; Output: N/A
 ;****************************************************
-S2_MB_PRESSED_ISR:
-	cli
+S1_MB_PRESSED_ISR:
+	cli ; Turn off interrupts
 	push r16
 	push r17
 	lds r17, CPU_SREG ; Save status register on stack
@@ -533,6 +557,6 @@ S2_MB_PRESSED_ISR:
 	sts CPU_SREG, r17 ; restore status register from stack
 	pop r17
 	pop r16
-	sei
+	sei ; Turn back on interrupts
 	reti
 ;*******END OF SUBROUTINES***************************
