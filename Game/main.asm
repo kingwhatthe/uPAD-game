@@ -146,23 +146,11 @@ PLAY_LOOP:
 
 	; Turn on clock
 	ldi r16, TC_CLKSEL_DIV1024_gc
-	sts TCC0_CTRLA, r16
 
 	; Set the frame rate to run at 200ms (40ms * 5 = 200ms = 5Hz)
 	ldi r17, 5
 
-TIMER_LOOP3:
-	lds r16, TCC0_INTFLAGS
-	sbrs r16, 0
-	rjmp TIMER_LOOP3
-	andi r16, 0b00001111
-	sts TCC0_INTFLAGS, r16
-	dec r17 ; decrement r17 to wait another TC clock cycle
-	brne TIMER_LOOP3
-	
-	; Turn off timer
-	ldi r16, TC_CLKSEL_OFF_gc
-	sts TCC0_CTRLA, r16
+	rcall TIMER_DELAY ; calls subroutine to delay
 
 	inc r19 ; increment animation counter
 
@@ -176,12 +164,6 @@ TIMER_LOOP3:
 GAMEPLAY:
 
 	rcall LEVEL_INIT
-
-	; the following 4 lines are double branches so that the program can move around properly (probably should find a better way to do this...
-	rjmp GAME_LOOP
-PLAY2:
-	rjmp PLAY
-
 
 GAME_LOOP:
 
@@ -248,7 +230,7 @@ TIMER_LOOP4:
 	breq GAMEPLAY
 
 	cpi STAGE_GOING, 1
-	breq PLAY2
+	breq PLAY
 
 	rjmp GAME_LOOP
 ; end of program (never reached)
@@ -375,6 +357,32 @@ LEVEL_INIT:
 	pop r16
 	ret
 
+;****************************************************
+; Name: TIMER_DELAY 
+; Purpose: To create a program delay using TC from inputs 
+;		   from the inputs of speed and cycles of the clock
+; Input(s): r16, r17
+; Output: N/A
+;****************************************************
+TIMER_DELAY:
+	; Turn on clock
+	;ldi r16, TC_CLKSEL_DIV64_gc
+	sts TCC0_CTRLA, r16
+
+TIMER_LOOP:
+	lds r16, TCC0_INTFLAGS
+	sbrs r16, 0
+	rjmp TIMER_LOOP
+	ldi r16, 0b00000001
+	sts TCC0_INTFLAGS, r16
+	dec r17 ; decrement r17 to wait another TC clock cycle
+	brne TIMER_LOOP
+	
+	; Turn off timer
+	ldi r16, TC_CLKSEL_OFF_gc
+	sts TCC0_CTRLA, r16
+
+	ret
 ;****************************************************
 ; Name: S1_SLB_PRESSED_ISR 
 ; Purpose: This is the general ISR for the SLB S1 button. It will determine what
