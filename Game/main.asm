@@ -127,8 +127,8 @@ PLAY:
 
 ; Reload the relevant index to the first memory location
 ; within the animation table to play animation from first frame.
-	ldi ZL, 0x00
-	ldi ZH, 0x40 ; had to double the actual address because program memory stores words not bytes
+	ldi ZL, low(ANIMATION_START_ADDR)*2
+	ldi ZH, high(ANIMATION_START_ADDR)*2 ; had to double the actual address because program memory stores words not bytes
 	ldi r19, 0 ; set frame counter to 0 (used to check if end of animation is reached
 	ldi STAGE_COMING, 1
 
@@ -408,8 +408,8 @@ S1_SLB_PRESSED_ISR:
 
 	GO_STAGE2:
 		ldi STAGE_GOING, 2
-		ldi ZL, 0x00
-		ldi ZH, 0x60
+		ldi ZL, low(LEVEL_START_ADDR)*2
+		ldi ZH, high(LEVEL_START_ADDR)*2
 
 		; if coming from the gameplay loop, check if its a hit
 	CHECK2:
