@@ -37,16 +37,12 @@ Image curtesy of ChatGPT.
 Here is a demonstration video of me playing the game. I showcase the title screen, play until I reach 6 points, check the score, play until I reach 15 points, and then I lose and check the high score from the title screen.
 
 
-
-<video src="https://youtu.be/aQLZZZr0rH8" width="100%"></video>
-
+[![Watch the demo](https://img.youtube.com/vi/aQLZZZr0rH8/0.jpg)](https://youtu.be/aQLZZZr0rH8)
 
 Here I demonstrate the "kill screen" of the game:
 
 
-
-<video src="https://youtu.be/sTYj0H-ewm4" width="100%"></video>
-
+[![Watch the kill screen demo](https://img.youtube.com/vi/sTYj0H-ewm4/0.jpg)](https://youtu.be/sTYj0H-ewm4)
 
 
 #### Appendix
