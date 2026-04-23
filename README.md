@@ -49,7 +49,7 @@ Here I demonstrate the "kill screen" of the game:
 
 
 
-For additional information on the development process of the game, see the [Psuedocode](/psudocode.md) file.
+For additional information on the development process of the game, see the [Pseudocode](/pseudocode.md) file.
 
 
 
