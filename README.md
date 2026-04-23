@@ -2,11 +2,11 @@
 
 
 
-This project is an extracurricular project I made using the MicroPAD (uPAD) from EEL4744, Introduction to Microprocessors. The board utilizes a ATxmega128A1U microcontroller with the Out-of-the-Box Switch-LED backpack installed. The whole project was written in Microchip Atmel Studio using the assembly language associated with the ATxmega128A1U. See appendix for supporting documents.
+This project is an extracurricular project I made using the MicroPAD (uPAD) from [EEL4744, Introduction to Microprocessors](https://mil.ufl.edu/4744/). The board utilizes a ATxmega128A1U microcontroller with the [Out-of-the-Box](https://www.ootbelec.com/) Switch-LED backpack installed. The whole project was written in Microchip Atmel Studio using the assembly language associated with the ATxmega128A1U. See appendix for supporting documents.
 
 
 
-This game was inspired by the arcade game Stacker (insert hyperlink), except it is 1 dimensional. The goal of the game is to line up the cursor LED(s) with the target LED (which is stationary). Each time the user presses the button when the cursor and target overlap, the player gets a point added to their current score. The player can check their current score at any time. If their current score is greater than the high score, the high score is updated to the current score and is saved between games. The game has a set number of levels. However, the last few levels are so difficult that a human would not be able to complete them, thus creating a similar "kill screen" to the original version of Tetris (insert hyperlink).
+This game was inspired by the arcade game [Stacker](https://en.wikipedia.org/wiki/Stacker_(arcade_game)), except it is 1 dimensional. The goal of the game is to line up the cursor LED(s) with the target LED (which is stationary). Each time the user presses the button when the cursor and target overlap, the player gets a point added to their current score. The player can check their current score at any time. If their current score is greater than the high score, the high score is updated to the current score and is saved between games. The game has a set number of levels. However, the last few levels are so difficult that a human would not be able to complete them, thus creating a similar "kill screen" to the original version of [Tetris](https://en.wikipedia.org/wiki/Tetris_(NES_video_game)).
 
 
 
@@ -23,7 +23,8 @@ The game have 4 states:
 
 
 
-(insert image of game flow here)
+<img width="1536" height="1024" alt="ChatGPT Image Apr 23, 2026, 01_01_49 PM" src="https://github.com/user-attachments/assets/74e0ebb9-7aed-46f0-8bfa-c44c63b59ae7" />
+
 
 Image curtesy of ChatGPT.
 
@@ -37,15 +38,14 @@ Here is a demonstration video of me playing the game. I showcase the title scree
 
 
 
-(insert video link)
-
+<video src="https://youtu.be/aQLZZZr0rH8" width="100%"></video>
 
 
 Here I demonstrate the "kill screen" of the game:
 
 
 
-(insert video link)
+<video src="https://youtu.be/sTYj0H-ewm4" width="100%"></video>
 
 
 
@@ -53,7 +53,7 @@ Here I demonstrate the "kill screen" of the game:
 
 
 
-For additional information on the development process of the game, see the psudocode.md file.
+For additional information on the development process of the game, see the [Psuedocode](/psudocode.md) file.
 
 
 
