@@ -17,14 +17,14 @@
 * Loads from program memory the stage that it is on (eventually gonna have a Tetris-style, not humanly possible stage)
 * To do this, there needs to be a mapping of difficulty for each byte of program memory (figure out later probably)
 * The following qualities will be determined by the byte of information described in this section of program memory:
-* &nbsp;	- Speed of cursor
-* &nbsp;	- width of cursor
-* &nbsp;	- color of LED
-* &nbsp;	- The actual level # will not be kept in the program memory, as this will be determined by an external counter
+*  	- Speed of cursor
+*  	- width of cursor
+*  	- color of LED
+*  	- The actual level # will not be kept in the program memory, as this will be determined by an external counter
 * 
 * When the user fails, the program will go back to stage 1
 * Also, when SLB S2 is pressed, the program will switch to stage 4.
-* At any point, the program should be able to expect an interrupt from SLB S1, which will cause the next stage of the game. 
+* At any point, the program should be able to expect an interrupt from SLB S1, which will cause the next stage of the game.
 
 
 
@@ -39,14 +39,14 @@
 
 ##### Determination of the Target Position:
 
-* In order for the game to be at all fun, the target must move from level to level. This could be programmed with program memory (which I might do initially), but ideally it should be completely random. I have no idea how to implement randomness in assembly, so this will be fun. Really, the determination of the Target Position is just a random number 0-7, which I am sure I could do by checking some external timer and divide by something (idk, I'll think about this later). For now, we can just program the position into program memory with the rest of the level instructions. 
+* In order for the game to be at all fun, the target must move from level to level. This could be programmed with program memory (which I might do initially), but ideally it should be completely random. I have no idea how to implement randomness in assembly, so this will be fun. Really, the determination of the Target Position is just a random number 0-7, which I am sure I could do by checking some external timer and divide by something (idk, I'll think about this later). For now, we can just program the position into program memory with the rest of the level instructions.
 
 
 
 ### Stage 4: Check High Score
 
-* During either Stage 1 or Stage 2, the user should be able to click SLB 2 (without debouncing necessary) to switch to high score checking mode. In this mode, the LEDs will display the static current score (coming from Stage 1) or the static high score (if coming from Stage 2). 
-* This would be an interrupt that could happen at any time during Stage 1 or 2, so the variables should be able to be stored when resuming those stages. 
+* During either Stage 1 or Stage 2, the user should be able to click SLB 2 (without debouncing necessary) to switch to high score checking mode. In this mode, the LEDs will display the static current score (coming from Stage 1) or the static high score (if coming from Stage 2).
+* This would be an interrupt that could happen at any time during Stage 1 or 2, so the variables should be able to be stored when resuming those stages.
 * When S1 is pressed, the stage will be updated to either Stage 1 or Stage 2 depending on where the user is coming from. This input needs to be debounced.
 
 
@@ -67,7 +67,7 @@ Lets move on to the actual pseudocode!
 
 Initialize all interrupts (S1, S2, timer C and D overflow for gameplay loop and animation respectively);
 
-Initialize program memory with appropriate animation frames; 
+Initialize program memory with appropriate animation frames;
 
 Initialize stack;
 
@@ -89,31 +89,31 @@ define level\_start\_address as a constant;
 
 while (true){
 
-&nbsp;	load data from Z;
+ 	load data from Z;
 
-&nbsp;	if (Z == 0x00 (end of animation)){
+ 	if (Z == 0x00 (end of animation)){
 
-&nbsp;		Z = start address;
+ 		Z = start address;
 
-&nbsp;	}
+ 	}
 
-&nbsp;	Update PORTC from Z;
+ 	Update PORTC from Z;
 
-&nbsp;	Increment Z;
+ 	Increment Z;
 
-&nbsp;	Wait until clock overflow before moving onto next frame;
+ 	Wait until clock overflow before moving onto next frame;
 
 }
 
 function S1\_Interrupt{
 
-&nbsp;	// This all has to be debounced...
+ 	// This all has to be debounced...
 
-&nbsp;	Set Z to level\_start\_address;
+ 	Set Z to level\_start\_address;
 
-&nbsp;	Stop D timer;
+ 	Stop D timer;
 
-&nbsp;	branch to Stage 2;
+ 	branch to Stage 2;
 
 }
 
@@ -123,7 +123,7 @@ function S2\_Interrupt{
 
  	Stop D timer;
 
-&nbsp;	Store info in a register of where you came from (Stage 1 or 2);
+ 	Store info in a register of where you came from (Stage 1 or 2);
 
  	branch to Stage 4;
 
@@ -153,69 +153,69 @@ initialize target position from level information (to start off with);
 
 while (true){
 
-&nbsp;	if (moving right \&\& cursor position is not all the way to the right){
+ 	if (moving right \&\& cursor position is not all the way to the right){
 
-&nbsp;		shift cursor right;
+ 		shift cursor right;
 
-&nbsp;	}
+ 	}
 
-&nbsp;	else if (not moving right \&\& cursor position is not all way to the left){
+ 	else if (not moving right \&\& cursor position is not all way to the left){
 
-&nbsp;		shift cursor left
+ 		shift cursor left
 
-&nbsp;	}
+ 	}
 
-&nbsp;	else if (cursor position is all the way left){
+ 	else if (cursor position is all the way left){
 
-&nbsp;		moving right = true;
+ 		moving right = true;
 
-&nbsp;	}
+ 	}
 
-&nbsp;	else if (cursor position is all the way right){
+ 	else if (cursor position is all the way right){
 
  		moving right = false;
 
  	}
 
-&nbsp;	update PORTC based on cursor;
+ 	update PORTC based on cursor;
 
-&nbsp;	update PORTC based on target;
+ 	update PORTC based on target;
 
-&nbsp;	wait for timer to overflow;
+ 	wait for timer to overflow;
 
-}	
+}
 
 
 
 function S1\_Interrupt{
 
-&nbsp;	// This all has to be debounced...
+ 	// This all has to be debounced...
 
-&nbsp;	if (target is within range of cursor){
+ 	if (target is within range of cursor){
 
-&nbsp;		increment Z;
+ 		increment Z;
 
-&nbsp;		increment counter variable;
+ 		increment counter variable;
 
-&nbsp;		if (counter > high score){
+ 		if (counter > high score){
 
-&nbsp;			store counter in high score in data memory;
+ 			store counter in high score in data memory;
 
-&nbsp;		}
+ 		}
 
-&nbsp;		branch back to Stage 2;
+ 		branch back to Stage 2;
 
-&nbsp;	}
+ 	}
 
-&nbsp;	if (target is not within range of cursor){
+ 	if (target is not within range of cursor){
 
-&nbsp;		Set Z to Animation\_start\_address;
+ 		Set Z to Animation\_start\_address;
 
-&nbsp;		play outro animation;
+ 		play outro animation;
 
-&nbsp;		branch back to stage 1;
+ 		branch back to stage 1;
 
-&nbsp;	} 	
+ 	} 
 
 }
 
@@ -237,19 +237,19 @@ function S2\_Interrupt{
 
 while (true){
 
-&nbsp;	if (return register is 1){
+ 	if (return register is 1){
 
-&nbsp;		Load in high score from data memory;
+ 		Load in high score from data memory;
 
-&nbsp;	}
+ 	}
 
-&nbsp;	else{
+ 	else{
 
-&nbsp;		load in current score;
+ 		load in current score;
 
-&nbsp;	}
+ 	}
 
-&nbsp;	PORTC LEDs = whatever score;
+ 	PORTC LEDs = whatever score;
 
 }
 
@@ -277,7 +277,67 @@ function S1\_Interrupt{
 
 
 
+TIMER\_LOOP5:
+
+; Load OVFIF flag
+
+ 	lds r16, TCC0\_INTFLAGS
 
 
 
+ 	;Check SL2
+
+ 	lds r17, PORTF\_IN
+
+ 	sbrs r16, 0
+
+ 	rjmp TIMER\_LOOP5
+
+
+
+ 	; If pressed and value in r24 is true
+
+ 	sbrc r17, 2
+
+ 	cpi r24, 1
+
+ 	breq FINISH\_DEBOUNCING ; increment r16 (counter)
+
+
+
+CONTINUE2:
+
+ 
+
+ 	; if value is pressed, set r20 to tue
+
+ 	sbrs r17, 3
+
+ 	ldi r24, 1
+
+
+
+ 	; Turn off timer
+
+ 	ldi r16, TC\_CLKSEL\_OFF\_gc
+
+ 	sts TCC0\_CTRLA, r16
+
+ 	; reset flag
+
+ 	ldi r16, 0b00000001
+
+ 	sts TCC0\_INTFLAGS, r16
+
+ 	rjmp END\_DEBOUNCE
+
+
+
+FINISH\_DEBOUNCING:
+
+ 	ldi r24, 0 ; reset pressed flag (false)
+
+ 	rjmp CONTINUE2
+
+END\_DEBOUNCE:
 
